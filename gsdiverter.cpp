@@ -11,6 +11,7 @@ static DWORD worker(LPVOID arg);
 
 // target port; to Where we'll redirect requests
 static UINT16 Target_Port; 
+static UINT16 Listening_Port;
 
 /*
  * Entry.
@@ -30,13 +31,13 @@ int __cdecl main(int argc, char **argv)
        exit(EXIT_FAILURE);
     }
     
-    int lPort = atoi(argv[2]);		// Listening port
-    Target_Port = atoi(argv[3]);	// Target port;
-    fprintf(stdout, "Target port: %d\n", Target_Port);
+	// Get the listening and targeting ports 
+	Listening_Port = atoi(argv[2]);
+    Target_Port = atoi(argv[3]);
 
     // Create the filter
     char filter[200];
-    snprintf(filter, sizeof(filter), "inbound == 1 and udp == 1 and udp.DstPort == %d and udp.PayloadLength >= %d", lPort, 11);
+    snprintf(filter, sizeof(filter), "(inbound == 1 and udp == 1 and udp.DstPort == %d and udp.PayloadLength >= %d) or (outbound == 1 and udp.SrcPort == %d)", Listening_Port, 11, Target_Port);
 
     fprintf(stdout, "filter: %s\n", filter);
     // Divert traffic matching the filter:
@@ -104,21 +105,25 @@ static DWORD worker(LPVOID arg)
             continue;
         }
 
-        UINT8* data = (UINT8*)payload;
+		if (addr.Direction == WINDIVERT_DIRECTION_OUTBOUND) {
+			// Outbound! 
+			pUDPHdr->SrcPort = htons(Listening_Port);			// We'll just fix the target port to the original(= listening) one	
 
+		} else {
+			// Inbound!
+			UINT8* data = (UINT8*)payload;
 
-        // do we care about this message?
-        // - needs to start with 0xFE 0xFD
-        // - 10th byte needs to have least significate byte to 1
-        if (data[0] == MAGIC_BYTE_1 && data[1] == MAGIC_BYTE_2 && (data[10] & 1) == 1) {
-            // Redirect!
-            fprintf(stdout, "Redirecting package\n");
-            pUDPHdr->DstPort = htons(Target_Port);						// Converting to network byte order (big-endian)
-            WinDivertHelperCalcChecksums(packet, packet_length, 0);		// Updating the checksum field
-        }
+			// do we care about this message?
+			// - needs to start with 0xFE 0xFD
+			// - 10th byte needs to have least significate byte to 1
+			if (data[0] == MAGIC_BYTE_1 && data[1] == MAGIC_BYTE_2 && (data[10] & 1) == 1) {
+				pUDPHdr->DstPort = htons(Target_Port);			// Converting to network byte order (big-endian)
+			}
+		}
 
         // and... Re-inject it!
         fprintf(stdout, "Re-inject it...\n");
+		WinDivertHelperCalcChecksums(packet, packet_length, 0);				// Updating the checksum field
         if (!WinDivertSend(handle, packet, packet_length, &addr, nullptr)) {
             fprintf(stderr, "warning; failed to re-inject packet: %d\n", GetLastError());
         }
