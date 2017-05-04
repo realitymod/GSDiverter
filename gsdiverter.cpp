@@ -6,6 +6,12 @@
 #define MAGIC_BYTE_1 0xFE
 #define MAGIC_BYTE_2 0xFD
 
+#ifndef DEBUG
+#define DEBUG false
+#endif
+
+#define DEBUG_MSG(pattern, ...) do{  if(DEBUG) { fprintf(stdout, pattern, __VA_ARGS__ );} }while(false)
+
 // Declare worker function
 static DWORD worker(LPVOID arg);
 
@@ -39,7 +45,7 @@ int __cdecl main(int argc, char **argv)
     char filter[200];
     snprintf(filter, sizeof(filter), "(inbound == 1 and udp == 1 and udp.DstPort == %d and udp.PayloadLength >= %d) or (outbound == 1 and udp.SrcPort == %d)", Listening_Port, 11, Target_Port);
 
-    fprintf(stdout, "filter: %s\n", filter);
+	DEBUG_MSG("filter: %s\n", filter);
     // Divert traffic matching the filter:
     HANDLE handle = WinDivertOpen(filter, WINDIVERT_LAYER_NETWORK, 0, 0);
     if (handle == INVALID_HANDLE_VALUE)
@@ -75,7 +81,7 @@ int __cdecl main(int argc, char **argv)
  */
 static DWORD worker(LPVOID arg)
 {
-    fprintf(stdout, "Starting a worker...\n");
+	DEBUG_MSG("Starting a worker...\n");
     unsigned char packet[MAXBUF];			// buffer for the created outbound package
     unsigned int packet_length;				// total number of bytes written to the inboud buffer.
     WINDIVERT_ADDRESS addr;					// "address" of a captured or injected packet
@@ -90,7 +96,7 @@ static DWORD worker(LPVOID arg)
             fprintf(stderr, "warning: failed to read packet (%d)\n", GetLastError());
             continue;
         }
-        fprintf(stdout, "Obtain a package\n");
+		DEBUG_MSG("Obtain a package\n");
 
         
         // Parse a packet
@@ -122,7 +128,7 @@ static DWORD worker(LPVOID arg)
 		}
 
         // and... Re-inject it!
-        fprintf(stdout, "Re-inject it...\n");
+		DEBUG_MSG("Re-inject it...\n");
 		WinDivertHelperCalcChecksums(packet, packet_length, 0);				// Updating the checksum field
         if (!WinDivertSend(handle, packet, packet_length, &addr, nullptr)) {
             fprintf(stderr, "warning; failed to re-inject packet: %d\n", GetLastError());
