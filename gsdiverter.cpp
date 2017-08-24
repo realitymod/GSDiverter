@@ -3,8 +3,8 @@
 #include "windivert.h"
 
 #define MAXBUF  0xFFFF
-#define MAGIC_BYTE_1 0xFE
-#define MAGIC_BYTE_2 0xFD
+#define MAGIC_BYTE_0 0xFE
+#define MAGIC_BYTE_1 0xFD
 
 #ifndef DEBUG
 #define DEBUG false
@@ -123,7 +123,7 @@ static DWORD worker(LPVOID arg)
 			// - needs to start with 0xFE 0xFD
 			// - 11th byte needs to have least significate byte to 1
 			// - It has 11 bytes; no more no less
-			if (data[0] == MAGIC_BYTE_1 && data[1] == MAGIC_BYTE_2 && (data[10] & 1) == 1 && payload_len == 11)  {
+			if (data[0] == MAGIC_BYTE_0 && data[1] == MAGIC_BYTE_1 && (data[10] & 1) == 1 && payload_len == 11)  {
 				pUDPHdr->DstPort = htons(Target_Port);			// Converting to network byte order (big-endian)
 			}
 		}
