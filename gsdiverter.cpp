@@ -121,8 +121,9 @@ static DWORD worker(LPVOID arg)
 
 			// do we care about this message?
 			// - needs to start with 0xFE 0xFD
-			// - 10th byte needs to have least significate byte to 1
-			if (data[0] == MAGIC_BYTE_1 && data[1] == MAGIC_BYTE_2 && (data[10] & 1) == 1) {
+			// - 11th byte needs to have least significate byte to 1
+			// - It has 11 bytes; no more no less
+			if (data[0] == MAGIC_BYTE_1 && data[1] == MAGIC_BYTE_2 && (data[10] & 1) == 1 && payload_len == 11)  {
 				pUDPHdr->DstPort = htons(Target_Port);			// Converting to network byte order (big-endian)
 			}
 		}
