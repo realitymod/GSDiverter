@@ -14,10 +14,11 @@
 
 // Declare worker function
 static DWORD worker(LPVOID arg);
-
-// target port; to Where we'll redirect requests
-static UINT16 Target_Port;
+// Port which the packets will be intercepted from
 static UINT16 Listening_Port;
+// Port to which the packets will be redirected to
+static UINT16 Target_Port;
+
 
 /*
 * Entry.
@@ -103,19 +104,22 @@ static DWORD worker(LPVOID arg)
         PWINDIVERT_UDPHDR pUDPHdr;
         PVOID payload;
         unsigned int payload_len;
-        if (!WinDivertHelperParsePacket(packet, packet_length, nullptr, nullptr, nullptr, nullptr, nullptr, &pUDPHdr, &payload, &payload_len)) {
+        if (!WinDivertHelperParsePacket(packet, packet_length, nullptr, nullptr, nullptr, nullptr, nullptr, &pUDPHdr, &payload, &payload_len))
+        {
             fprintf(stderr, "warning: failed to parse packet\n");
             // Reinject
             WinDivertSend(handle, packet, packet_length, &addr, nullptr);
             continue;
         }
 
-        if (addr.Direction == WINDIVERT_DIRECTION_OUTBOUND) {
+        if (addr.Direction == WINDIVERT_DIRECTION_OUTBOUND)
+        {
             // Outbound!
             pUDPHdr->SrcPort = htons(Listening_Port); // We'll just fix the target port to the original(= listening) one
 
         }
-        else {
+        else
+        {
             // Inbound!
             UINT8* data = (UINT8*)payload;
 
@@ -123,7 +127,8 @@ static DWORD worker(LPVOID arg)
             // - needs to start with 0xFE 0xFD
             // - 11th byte needs to have least significate byte to 1
             // - It has 11 bytes; no more no less
-            if (data[0] == MAGIC_BYTE_0 && data[1] == MAGIC_BYTE_1 && (data[10] & 1) == 1 && payload_len == 11) {
+            if (data[0] == MAGIC_BYTE_0 && data[1] == MAGIC_BYTE_1 && (data[10] & 1) == 1 && payload_len == 11)
+            {
                 pUDPHdr->DstPort = htons(Target_Port);  // Converting to network byte order (big-endian)
             }
         }
@@ -131,7 +136,8 @@ static DWORD worker(LPVOID arg)
         // and... Re-inject it!
         DEBUG_MSG("Re-inject it...\n");
         WinDivertHelperCalcChecksums(packet, packet_length, 0);     // Updating the checksum field
-        if (!WinDivertSend(handle, packet, packet_length, &addr, nullptr)) {
+        if (!WinDivertSend(handle, packet, packet_length, &addr, nullptr))
+        {
             fprintf(stderr, "warning; failed to re-inject packet: %d\n", GetLastError());
         }
     }
