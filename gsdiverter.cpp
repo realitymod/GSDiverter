@@ -30,7 +30,7 @@ int __cdecl main(int argc, char **argv)
         exit(EXIT_FAILURE);
     }
 
-    int nThreads = 3; //atoi(argv[1]);
+    int nThreads = atoi(argv[1]);
     if (nThreads < 1 || nThreads > 64)
     {
         fprintf(stderr, "error: invalid number of threads\n");
@@ -104,7 +104,7 @@ static DWORD worker(LPVOID arg)
         PVOID payload;
         unsigned int payload_len;
         if (!WinDivertHelperParsePacket(packet, packet_length, nullptr, nullptr, nullptr, nullptr, nullptr, &pUDPHdr, &payload, &payload_len)) {
-            fprintf(stderr, "warning; failed to parse packet\n");
+            fprintf(stderr, "warning: failed to parse packet\n");
             // Reinject
             WinDivertSend(handle, packet, packet_length, &addr, nullptr);
             continue;
